@@ -2,7 +2,7 @@
  * API client for the LLM Council backend.
  */
 
-const API_BASE = 'http://localhost:8001';
+const API_BASE = 'http://localhost:8383';
 
 export const api = {
   /**
@@ -42,6 +42,22 @@ export const api = {
     );
     if (!response.ok) {
       throw new Error('Failed to get conversation');
+    }
+    return response.json();
+  },
+
+  /**
+   * Delete a conversation.
+   */
+  async deleteConversation(conversationId) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    if (!response.ok) {
+      throw new Error('Failed to delete conversation');
     }
     return response.json();
   },
@@ -91,14 +107,38 @@ export const api = {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let buffer = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      buffer += decoder.decode(value, { stream: true });
 
+      // Process complete SSE events (separated by double newlines)
+      const events = buffer.split('\n\n');
+      // Keep the last potentially incomplete event in the buffer
+      buffer = events.pop() || '';
+
+      for (const eventBlock of events) {
+        const lines = eventBlock.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            try {
+              const event = JSON.parse(data);
+              onEvent(event.type, event);
+            } catch (e) {
+              console.error('Failed to parse SSE event:', e, 'Data:', data.substring(0, 100));
+            }
+          }
+        }
+      }
+    }
+
+    // Process any remaining data in the buffer
+    if (buffer.trim()) {
+      const lines = buffer.split('\n');
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
@@ -106,7 +146,7 @@ export const api = {
             const event = JSON.parse(data);
             onEvent(event.type, event);
           } catch (e) {
-            console.error('Failed to parse SSE event:', e);
+            console.error('Failed to parse final SSE event:', e);
           }
         }
       }

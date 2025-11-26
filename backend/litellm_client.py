@@ -3,12 +3,17 @@
 import os
 import asyncio
 from typing import List, Dict, Any, Optional
-from litellm import acompletion
+from openai import AsyncOpenAI
 
-# LiteLLM proxy configuration (optional)
-# If set, all requests go through the proxy
+# LiteLLM proxy configuration
 LITELLM_API_BASE = os.getenv("LITELLM_API_BASE")
 LITELLM_API_KEY = os.getenv("LITELLM_API_KEY")
+
+# Use OpenAI client pointed at LiteLLM proxy
+client = AsyncOpenAI(
+    api_key=LITELLM_API_KEY or "dummy",
+    base_url=LITELLM_API_BASE,
+) if LITELLM_API_BASE else None
 
 
 async def query_model(
@@ -17,10 +22,10 @@ async def query_model(
     timeout: float = 120.0
 ) -> Optional[Dict[str, Any]]:
     """
-    Query a single model via LiteLLM.
+    Query a single model via LiteLLM proxy using OpenAI client.
 
     Args:
-        model: Model identifier (e.g., "gpt-4o", "anthropic/claude-sonnet-4-5-20250929")
+        model: Model identifier as configured in LiteLLM proxy
         messages: List of message dicts with 'role' and 'content'
         timeout: Request timeout in seconds
 
@@ -28,20 +33,15 @@ async def query_model(
         Response dict with 'content' and optional 'reasoning_details', or None if failed
     """
     try:
-        # Build kwargs for acompletion
-        kwargs = {
-            "model": model,
-            "messages": messages,
-            "timeout": timeout,
-        }
+        if not client:
+            print("Error: LITELLM_API_BASE not set")
+            return None
 
-        # If using LiteLLM proxy, add base_url and api_key
-        if LITELLM_API_BASE:
-            kwargs["api_base"] = LITELLM_API_BASE
-        if LITELLM_API_KEY:
-            kwargs["api_key"] = LITELLM_API_KEY
-
-        response = await acompletion(**kwargs)
+        response = await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            timeout=timeout,
+        )
 
         message = response.choices[0].message
 

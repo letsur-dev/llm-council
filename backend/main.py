@@ -17,7 +17,7 @@ app = FastAPI(title="LLM Council API")
 # Enable CORS for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,6 +77,15 @@ async def get_conversation(conversation_id: str):
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
+
+
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """Delete a conversation."""
+    deleted = storage.delete_conversation(conversation_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"status": "deleted", "id": conversation_id}
 
 
 @app.post("/api/conversations/{conversation_id}/message")
@@ -196,4 +205,4 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8383)
