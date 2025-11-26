@@ -102,65 +102,64 @@ function App() {
         messages: [...prev.messages, assistantMessage],
       }));
 
+      // Helper to update the last assistant message immutably
+      const updateLastMessage = (updater) => {
+        setCurrentConversation((prev) => {
+          if (!prev) return prev;
+          const messages = [...prev.messages];
+          const lastIdx = messages.length - 1;
+          const lastMsg = messages[lastIdx];
+          // Create a new message object with updated properties
+          messages[lastIdx] = {
+            ...lastMsg,
+            loading: { ...lastMsg.loading },
+            ...updater(lastMsg),
+          };
+          return { ...prev, messages };
+        });
+      };
+
       // Send message with streaming
       await api.sendMessageStream(currentConversationId, content, (eventType, event) => {
         switch (eventType) {
           case 'stage1_start':
-            setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
-              lastMsg.loading.stage1 = true;
-              return { ...prev, messages };
-            });
+            updateLastMessage(() => ({
+              loading: { stage1: true, stage2: false, stage3: false },
+            }));
             break;
 
           case 'stage1_complete':
-            setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
-              lastMsg.stage1 = event.data;
-              lastMsg.loading.stage1 = false;
-              return { ...prev, messages };
-            });
+            updateLastMessage(() => ({
+              stage1: event.data,
+              loading: { stage1: false, stage2: false, stage3: false },
+            }));
             break;
 
           case 'stage2_start':
-            setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
-              lastMsg.loading.stage2 = true;
-              return { ...prev, messages };
-            });
+            updateLastMessage((msg) => ({
+              loading: { ...msg.loading, stage2: true },
+            }));
             break;
 
           case 'stage2_complete':
-            setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
-              lastMsg.stage2 = event.data;
-              lastMsg.metadata = event.metadata;
-              lastMsg.loading.stage2 = false;
-              return { ...prev, messages };
-            });
+            updateLastMessage((msg) => ({
+              stage2: event.data,
+              metadata: event.metadata,
+              loading: { ...msg.loading, stage2: false },
+            }));
             break;
 
           case 'stage3_start':
-            setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
-              lastMsg.loading.stage3 = true;
-              return { ...prev, messages };
-            });
+            updateLastMessage((msg) => ({
+              loading: { ...msg.loading, stage3: true },
+            }));
             break;
 
           case 'stage3_complete':
-            setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
-              lastMsg.stage3 = event.data;
-              lastMsg.loading.stage3 = false;
-              return { ...prev, messages };
-            });
+            updateLastMessage((msg) => ({
+              stage3: event.data,
+              loading: { ...msg.loading, stage3: false },
+            }));
             break;
 
           case 'title_complete':
