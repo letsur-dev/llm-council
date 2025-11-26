@@ -2,7 +2,7 @@
 
 ![llmcouncil](header.jpg)
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 2.5 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, etc.), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses LiteLLM (or OpenRouter) to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
 
 In a bit more detail, here is what happens when you submit a query:
 
@@ -32,15 +32,24 @@ npm install
 cd ..
 ```
 
-### 2. Configure API Key
+### 2. Configure API Provider
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root. You can use either LiteLLM (default) or OpenRouter.
 
+**Option A: LiteLLM Proxy (Default)**
 ```bash
+PROVIDER_BACKEND=litellm
+LITELLM_API_BASE=https://your-litellm-proxy.com/v1
+LITELLM_API_KEY=your-api-key
+```
+
+**Option B: OpenRouter**
+```bash
+PROVIDER_BACKEND=openrouter
 OPENROUTER_API_KEY=sk-or-v1-...
 ```
 
-Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase the credits you need, or sign up for automatic top up.
+Get your OpenRouter API key at [openrouter.ai](https://openrouter.ai/).
 
 ### 3. Configure Models (Optional)
 
@@ -48,14 +57,15 @@ Edit `backend/config.py` to customize the council:
 
 ```python
 COUNCIL_MODELS = [
-    "openai/gpt-5.1",
-    "google/gemini-3-pro-preview",
-    "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4",
+    "gpt-5.1",                      # OpenAI
+    "claude-sonnet-4-5-20250929",   # Anthropic
+    "gemini-2.5-pro",               # Google
 ]
 
-CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
+CHAIRMAN_MODEL = "gemini-2.5-pro"
 ```
+
+Note: Model names vary by provider. Use OpenRouter-style names (e.g., `openai/gpt-5.1`) when using OpenRouter, or your LiteLLM proxy's configured model names when using LiteLLM.
 
 ## Running the Application
 
@@ -81,7 +91,7 @@ Then open http://localhost:5173 in your browser.
 
 ## Tech Stack
 
-- **Backend:** FastAPI (Python 3.10+), async httpx, OpenRouter API
+- **Backend:** FastAPI (Python 3.10+), LiteLLM/OpenRouter API
 - **Frontend:** React + Vite, react-markdown for rendering
 - **Storage:** JSON files in `data/conversations/`
 - **Package Management:** uv for Python, npm for JavaScript
